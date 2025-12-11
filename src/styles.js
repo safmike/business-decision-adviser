@@ -1,5 +1,5 @@
-export const PRIMARY = "#4f46e5" ;
 // Design tokens and shared styles
+export const PRIMARY = "#4f46e5";
 export const PRIMARY_LIGHT = "#eef2ff";
 export const CARD_RADIUS = 20;
 
@@ -80,6 +80,8 @@ export const inputStyle = {
   borderRadius: 10,
   border: "1px solid #d1d5db",
   outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
 };
 
 export const segmentedControlRowStyle = {

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import BackButton from "../components/BackButton";
-import LabeledInput from "../components/LabeledInput";
-import ResultsPanel from "../components/ResultsPanel";
+import BackButton from "../components/BackButton.jsx";
+import LabeledInput from "../components/LabeledInput.jsx";
+import ResultsPanel from "../components/ResultsPanel.jsx";
 import { calculateResults } from "../utils/calculations";
 import {
   outerShellStyle,
@@ -16,6 +16,7 @@ import {
   primaryButtonStyle,
   PRIMARY,
   PRIMARY_LIGHT,
+  inputStyle,
 } from "../styles";
 
 const VehicleAnalysis = ({ onBack }) => {
@@ -28,6 +29,11 @@ const VehicleAnalysis = ({ onBack }) => {
     annualIncome: "",
     annualExpenses: "",
     cashReserves: "",
+    // NEW FIELDS
+    annualKm: 15000,
+    vehicleType: "sedan",
+    ownershipPeriod: 5,
+    entityType: "individual",
   });
 
   const [result, setResult] = useState(null);
@@ -75,8 +81,8 @@ const VehicleAnalysis = ({ onBack }) => {
               color: "#6b7280",
             }}
           >
-            Tell us about the vehicle and your business. We'll run a quick
-            sensibility check on the numbers.
+            Tell us about the vehicle and your business. We'll run a
+            comprehensive financial analysis.
           </p>
 
           {/* PURCHASE DETAILS */}
@@ -90,6 +96,26 @@ const VehicleAnalysis = ({ onBack }) => {
               value={formData.vehiclePrice}
               onChange={handleChange("vehiclePrice")}
             />
+
+            {/* Vehicle Type Dropdown */}
+            <div style={fieldBlockStyle}>
+              <label style={labelStyle}>Vehicle Type</label>
+              <select
+                value={formData.vehicleType}
+                onChange={handleChange("vehicleType")}
+                style={{
+                  ...inputStyle,
+                  cursor: "pointer",
+                }}
+              >
+                <option value="sedan">Sedan</option>
+                <option value="suv">SUV</option>
+                <option value="ute">Ute</option>
+                <option value="van">Van</option>
+                <option value="truck">Truck</option>
+                <option value="luxury">Luxury Vehicle</option>
+              </select>
+            </div>
 
             <div style={fieldBlockStyle}>
               <label style={labelStyle}>Business Use (%)</label>
@@ -112,6 +138,22 @@ const VehicleAnalysis = ({ onBack }) => {
                 {formData.businessUse}%
               </div>
             </div>
+
+            <LabeledInput
+              label="Expected Annual KM"
+              placeholder="e.g. 15,000"
+              type="number"
+              value={formData.annualKm}
+              onChange={handleChange("annualKm")}
+            />
+
+            <LabeledInput
+              label="Expected Ownership Period (years)"
+              placeholder="e.g. 5"
+              type="number"
+              value={formData.ownershipPeriod}
+              onChange={handleChange("ownershipPeriod")}
+            />
 
             <div style={fieldBlockStyle}>
               <label style={labelStyle}>Payment Method</label>
@@ -174,6 +216,24 @@ const VehicleAnalysis = ({ onBack }) => {
           </h2>
 
           <div style={fieldGroupStyle}>
+            {/* Entity Type Dropdown */}
+            <div style={fieldBlockStyle}>
+              <label style={labelStyle}>Business Structure</label>
+              <select
+                value={formData.entityType}
+                onChange={handleChange("entityType")}
+                style={{
+                  ...inputStyle,
+                  cursor: "pointer",
+                }}
+              >
+                <option value="individual">Sole Trader / Individual</option>
+                <option value="company">Company</option>
+                <option value="trust">Trust</option>
+                <option value="partnership">Partnership</option>
+              </select>
+            </div>
+
             <LabeledInput
               label="Annual Income ($)"
               placeholder="e.g. 180,000"
