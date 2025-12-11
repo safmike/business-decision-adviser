@@ -106,3 +106,21 @@ export const resultsCardStyle = {
   border: "1px solid #e5e7eb",
   padding: 12,
 };
+
+// Add fadeIn animation to document
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
