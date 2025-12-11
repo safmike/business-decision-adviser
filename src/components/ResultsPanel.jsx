@@ -1,9 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import MetricTile from "./MetricTile.jsx";
 import InsightRow from "./InsightRow.jsx";
-import { resultsCardStyle } from "../styles";
+import { resultsCardStyle, PRIMARY } from "../styles";
+import { calculateResults } from "../utils/calculations";
 
 const ResultsPanel = ({ result, formData }) => {
+  const [showScenarios, setShowScenarios] = useState(false);
+  const [showYearByYear, setShowYearByYear] = useState(false);
+
   if (!result) {
     return (
       <div style={resultsCardStyle}>
@@ -21,12 +25,18 @@ const ResultsPanel = ({ result, formData }) => {
     );
   }
 
-  const gaugeColor =
+  const       gaugeColor =
     result.overall >= 75
       ? "#16a34a"
       : result.overall >= 45
       ? "#f59e0b"
       : "#dc2626";
+
+  // Generate scenarios for comparison
+  const scenarios = generateScenarios(formData, result);
+  
+  // Generate year-by-year breakdown
+  const yearByYearData = generateYearByYear(formData, result);
 
   return (
     <div style={{ marginTop: 22 }}>
@@ -203,9 +213,13 @@ const ResultsPanel = ({ result, formData }) => {
             fontSize: 14,
             fontWeight: 600,
             color: "#111827",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
           Tax Position
+          <Tooltip text="Tax implications include instant asset write-off eligibility, depreciation deductions, and luxury car tax if applicable." />
         </h3>
         
         {result.instantWriteOffEligible ? (
@@ -218,8 +232,9 @@ const ResultsPanel = ({ result, formData }) => {
               marginBottom: 8,
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#166534" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#166534", display: "flex", alignItems: "center", gap: 4 }}>
               ✓ Instant Asset Write-Off Eligible
+              <Tooltip text="Businesses with turnover under $10m can claim immediate deduction for assets under $20,000 (as of 2024-25). This means you get the full tax deduction in year 1 instead of spreading it over multiple years." />
             </div>
             <div style={{ fontSize: 11, color: "#166534", marginTop: 2 }}>
               Full deduction in year 1 (under $20,000 threshold)
@@ -235,8 +250,9 @@ const ResultsPanel = ({ result, formData }) => {
               marginBottom: 8,
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e", display: "flex", alignItems: "center", gap: 4 }}>
               Depreciation Method
+              <Tooltip text="Assets over $20,000 must be depreciated over time using either the diminishing value or prime cost method. Tax deductions are spread across the asset's effective life." />
             </div>
             <div style={{ fontSize: 11, color: "#92400e", marginTop: 2 }}>
               Tax deductions spread over ownership period
@@ -253,13 +269,128 @@ const ResultsPanel = ({ result, formData }) => {
               border: "1px solid #fca5a5",
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#991b1b" }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#991b1b", display: "flex", alignItems: "center", gap: 4 }}>
               ⚠ Luxury Car Tax Applies
+              <Tooltip text="Luxury Car Tax (LCT) is 33% of the value above the LCT threshold ($91,387 for 2024-25, or $84,916 for fuel-efficient vehicles). This is in addition to GST and the base price." />
             </div>
             <div style={{ fontSize: 11, color: "#991b1b", marginTop: 2 }}>
               Additional ${Number(result.lctAmount).toLocaleString()} LCT on top of
               vehicle price
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Year-by-Year Breakdown */}
+      <div style={{ ...resultsCardStyle, marginTop: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#111827",
+            }}
+          >
+            📅 Year-by-Year Breakdown
+          </h3>
+          <button
+            onClick={() => setShowYearByYear(!showYearByYear)}
+            style={{
+              background: "none",
+              border: "none",
+              color: PRIMARY,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              padding: "4px 8px",
+            }}
+          >
+            {showYearByYear ? "Hide" : "Show"}
+          </button>
+        </div>
+        
+        {showYearByYear && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #e5e7eb" }}>
+                    <th style={{ padding: "8px 4px", textAlign: "left", color: "#6b7280" }}>Year</th>
+                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280" }}>Payments</th>
+                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280" }}>Running</th>
+                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280" }}>Tax Saved</th>
+                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280", fontWeight: 600 }}>Net Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {yearByYearData.map((year, idx) => (
+                    <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={{ padding: "8px 4px", fontWeight: 500 }}>{year.year}</td>
+                      <td style={{ padding: "8px 4px", textAlign: "right" }}>${year.payments.toLocaleString()}</td>
+                      <td style={{ padding: "8px 4px", textAlign: "right" }}>${year.running.toLocaleString()}</td>
+                      <td style={{ padding: "8px 4px", textAlign: "right", color: "#059669" }}>-${year.taxSaved.toLocaleString()}</td>
+                      <td style={{ padding: "8px 4px", textAlign: "right", fontWeight: 600 }}>${year.netCost.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ borderTop: "2px solid #e5e7eb", fontWeight: 600 }}>
+                    <td style={{ padding: "8px 4px" }}>Total</td>
+                    <td style={{ padding: "8px 4px", textAlign: "right" }}>${yearByYearData.reduce((sum, y) => sum + y.payments, 0).toLocaleString()}</td>
+                    <td style={{ padding: "8px 4px", textAlign: "right" }}>${yearByYearData.reduce((sum, y) => sum + y.running, 0).toLocaleString()}</td>
+                    <td style={{ padding: "8px 4px", textAlign: "right", color: "#059669" }}>-${yearByYearData.reduce((sum, y) => sum + y.taxSaved, 0).toLocaleString()}</td>
+                    <td style={{ padding: "8px 4px", textAlign: "right" }}>${yearByYearData.reduce((sum, y) => sum + y.netCost, 0).toLocaleString()}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            <p style={{ fontSize: 10, color: "#9ca3af", marginTop: 8, marginBottom: 0 }}>
+              Shows annual loan payments, running costs, tax savings, and net out-of-pocket cost per year.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Scenario Comparison */}
+      <div style={{ ...resultsCardStyle, marginTop: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#111827",
+            }}
+          >
+            🔄 Compare Scenarios
+          </h3>
+          <button
+            onClick={() => setShowScenarios(!showScenarios)}
+            style={{
+              background: "none",
+              border: "none",
+              color: PRIMARY,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              padding: "4px 8px",
+            }}
+          >
+            {showScenarios ? "Hide" : "Show"}
+          </button>
+        </div>
+        
+        {showScenarios && (
+          <div style={{ marginTop: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+              {scenarios.map((scenario, idx) => (
+                <ScenarioCard key={idx} scenario={scenario} isCurrent={scenario.isCurrent} />
+              ))}
+            </div>
+            <p style={{ fontSize: 10, color: "#9ca3af", marginTop: 12, marginBottom: 0 }}>
+              Quick comparison of alternative scenarios to help optimize your decision.
+            </p>
           </div>
         )}
       </div>
@@ -448,6 +579,205 @@ const RiskFlag = ({ flag }) => {
       <span>{flag.message}</span>
     </div>
   );
+};
+
+// ========== NEW HELPER COMPONENTS ==========
+
+// Tooltip component
+const Tooltip = ({ text }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <button
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+        onClick={() => setIsVisible(!isVisible)}
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: "50%",
+          border: "1px solid #94a3b8",
+          background: "#f1f5f9",
+          color: "#64748b",
+          fontSize: 10,
+          fontWeight: 600,
+          cursor: "help",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+        }}
+      >
+        ?
+      </button>
+      {isVisible && (
+        <div
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 8px)",
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "#1e293b",
+            color: "white",
+            padding: "8px 12px",
+            borderRadius: 8,
+            fontSize: 11,
+            lineHeight: 1.5,
+            width: 220,
+            zIndex: 1000,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+          }}
+        >
+          {text}
+          <div
+            style={{
+              position: "absolute",
+              top: "100%",
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 0,
+              height: 0,
+              borderLeft: "6px solid transparent",
+              borderRight: "6px solid transparent",
+              borderTop: "6px solid #1e293b",
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Scenario comparison card
+const ScenarioCard = ({ scenario, isCurrent }) => {
+  const scoreColor = scenario.score >= 75 ? "#16a34a" : scenario.score >= 45 ? "#f59e0b" : "#dc2626";
+  
+  return (
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 12,
+        border: isCurrent ? `2px solid ${PRIMARY}` : "2px solid #e5e7eb",
+        backgroundColor: isCurrent ? "#f0f9ff" : "white",
+        position: "relative",
+      }}
+    >
+      {isCurrent && (
+        <div
+          style={{
+            position: "absolute",
+            top: -8,
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: PRIMARY,
+            color: "white",
+            fontSize: 9,
+            fontWeight: 600,
+            padding: "2px 8px",
+            borderRadius: 8,
+          }}
+        >
+          CURRENT
+        </div>
+      )}
+      <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 6 }}>
+        {scenario.name}
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: scoreColor, marginBottom: 4 }}>
+        {scenario.score}
+      </div>
+      <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 8 }}>
+        {scenario.description}
+      </div>
+      <div style={{ fontSize: 10, color: "#059669", fontWeight: 600 }}>
+        ${scenario.totalCost.toLocaleString()} total
+      </div>
+    </div>
+  );
+};
+
+// Generate scenarios for comparison
+const generateScenarios = (formData, currentResult) => {
+  const basePrice = Number(formData.vehiclePrice) || 0;
+  
+  const scenarios = [
+    {
+      name: "Current",
+      isCurrent: true,
+      data: formData,
+    },
+    {
+      name: "15% Cheaper",
+      isCurrent: false,
+      data: { ...formData, vehiclePrice: Math.round(basePrice * 0.85) },
+    },
+    {
+      name: "90% Business",
+      isCurrent: false,
+      data: { ...formData, businessUse: 90 },
+    },
+    {
+      name: "All Cash",
+      isCurrent: false,
+      data: { ...formData, paymentMethod: "cash" },
+    },
+  ];
+
+  return scenarios.map((s) => {
+    const result = s.isCurrent ? currentResult : calculateResults(s.data);
+    return {
+      ...s,
+      score: result.overall,
+      totalCost: Number(result.totalCostOfOwnership),
+      description: s.isCurrent 
+        ? `${Number(formData.vehiclePrice).toLocaleString()}, ${formData.businessUse}% business`
+        : s.name === "15% Cheaper"
+        ? `${s.data.vehiclePrice.toLocaleString()}`
+        : s.name === "90% Business"
+        ? `${s.data.businessUse}% business use`
+        : "No financing costs",
+    };
+  });
+};
+
+// Generate year-by-year breakdown
+const generateYearByYear = (formData, result) => {
+  const years = Number(formData.ownershipPeriod) || 5;
+  const monthlyPayment = Number(result.monthlyPayment) || 0;
+  const monthlyRunning = Number(result.monthlyRunningCost) || 0;
+  const totalTaxSavings = Number(result.totalTaxSavings) || 0;
+  const instantWriteOff = result.instantWriteOffEligible;
+
+  const yearlyData = [];
+  
+  for (let year = 1; year <= years; year++) {
+    const payments = monthlyPayment * 12;
+    const running = monthlyRunning * 12;
+    
+    // Tax savings distribution
+    let taxSaved = 0;
+    if (instantWriteOff && year === 1) {
+      taxSaved = totalTaxSavings;
+    } else if (!instantWriteOff) {
+      // Distribute depreciation tax savings (diminishing value method approximation)
+      const depreciationRate = 0.25; // Rough average
+      const remainingYears = years - year + 1;
+      taxSaved = totalTaxSavings * (depreciationRate / remainingYears);
+    }
+
+    const netCost = payments + running - taxSaved;
+
+    yearlyData.push({
+      year: `Year ${year}`,
+      payments: Math.round(payments),
+      running: Math.round(running),
+      taxSaved: Math.round(taxSaved),
+      netCost: Math.round(netCost),
+    });
+  }
+
+  return yearlyData;
 };
 
 export default ResultsPanel;
