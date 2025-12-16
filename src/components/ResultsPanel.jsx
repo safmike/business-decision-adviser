@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import MetricTile from "./MetricTile.jsx";
 import InsightRow from "./InsightRow.jsx";
 import { resultsCardStyle, PRIMARY } from "../styles";
-import { calculateResults } from "../utils/calculations";
+import { runVehicleEngine } from "../logic/vehicle/engine.js";
 
 const ResultsPanel = ({ result, formData }) => {
   const [showScenarios, setShowScenarios] = useState(false);
@@ -25,17 +25,10 @@ const ResultsPanel = ({ result, formData }) => {
     );
   }
 
-  const       gaugeColor =
-    result.overall >= 75
-      ? "#16a34a"
-      : result.overall >= 45
-      ? "#f59e0b"
-      : "#dc2626";
+  const gaugeColor =
+    result.overall >= 75 ? "#16a34a" : result.overall >= 45 ? "#f59e0b" : "#dc2626";
 
-  // Generate scenarios for comparison
   const scenarios = generateScenarios(formData, result);
-  
-  // Generate year-by-year breakdown
   const yearByYearData = generateYearByYear(formData, result);
 
   return (
@@ -50,7 +43,6 @@ const ResultsPanel = ({ result, formData }) => {
         Analysis Results
       </h2>
 
-      {/* Overall score gauge */}
       <div
         style={{
           borderRadius: 16,
@@ -119,7 +111,6 @@ const ResultsPanel = ({ result, formData }) => {
         </div>
       </div>
 
-      {/* Three metric tiles */}
       <div
         style={{
           display: "grid",
@@ -133,7 +124,6 @@ const ResultsPanel = ({ result, formData }) => {
         <MetricTile label="Financial Safety" value={result.safetyScore} />
       </div>
 
-      {/* Key Financial Metrics */}
       <div style={resultsCardStyle}>
         <h3
           style={{
@@ -184,10 +174,7 @@ const ResultsPanel = ({ result, formData }) => {
             label="Cash After Purchase"
             value={`$${Number(result.cashAfterPurchase).toLocaleString()}`}
           />
-          <MetricRow
-            label="Months of Reserves"
-            value={result.monthsOfReserves}
-          />
+          <MetricRow label="Months of Reserves" value={result.monthsOfReserves} />
         </div>
 
         <div
@@ -205,7 +192,6 @@ const ResultsPanel = ({ result, formData }) => {
         </div>
       </div>
 
-      {/* Tax Position */}
       <div style={{ ...resultsCardStyle, marginTop: 10 }}>
         <h3
           style={{
@@ -221,7 +207,7 @@ const ResultsPanel = ({ result, formData }) => {
           Tax Position
           <Tooltip text="Tax implications include instant asset write-off eligibility, depreciation deductions, and luxury car tax if applicable." />
         </h3>
-        
+
         {result.instantWriteOffEligible ? (
           <div
             style={{
@@ -232,7 +218,16 @@ const ResultsPanel = ({ result, formData }) => {
               marginBottom: 8,
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#166534", display: "flex", alignItems: "center", gap: 4 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#166534",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
               ✓ Instant Asset Write-Off Eligible
               <Tooltip text="Businesses with turnover under $10m can claim immediate deduction for assets under $20,000 (as of 2024-25). This means you get the full tax deduction in year 1 instead of spreading it over multiple years." />
             </div>
@@ -250,7 +245,16 @@ const ResultsPanel = ({ result, formData }) => {
               marginBottom: 8,
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#92400e", display: "flex", alignItems: "center", gap: 4 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#92400e",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
               Depreciation Method
               <Tooltip text="Assets over $20,000 must be depreciated over time using either the diminishing value or prime cost method. Tax deductions are spread across the asset's effective life." />
             </div>
@@ -269,7 +273,16 @@ const ResultsPanel = ({ result, formData }) => {
               border: "1px solid #fca5a5",
             }}
           >
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#991b1b", display: "flex", alignItems: "center", gap: 4 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#991b1b",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
               ⚠ Luxury Car Tax Applies
               <Tooltip text="Luxury Car Tax (LCT) is 33% of the value above the LCT threshold ($91,387 for 2024-25, or $84,916 for fuel-efficient vehicles). This is in addition to GST and the base price." />
             </div>
@@ -281,9 +294,15 @@ const ResultsPanel = ({ result, formData }) => {
         )}
       </div>
 
-      {/* Year-by-Year Breakdown */}
       <div style={{ ...resultsCardStyle, marginTop: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
           <h3
             style={{
               margin: 0,
@@ -309,52 +328,104 @@ const ResultsPanel = ({ result, formData }) => {
             {showYearByYear ? "Hide" : "Show"}
           </button>
         </div>
-        
+
         {showYearByYear && (
           <div style={{ marginTop: 12 }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", fontSize: 11, borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #e5e7eb" }}>
-                    <th style={{ padding: "8px 4px", textAlign: "left", color: "#6b7280" }}>Year</th>
-                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280" }}>Payments</th>
-                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280" }}>Running</th>
-                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280" }}>Tax Saved</th>
-                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280", fontWeight: 600 }}>Net Cost</th>
+                    <th style={{ padding: "8px 4px", textAlign: "left", color: "#6b7280" }}>
+                      Year
+                    </th>
+                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280" }}>
+                      Payments
+                    </th>
+                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280" }}>
+                      Running
+                    </th>
+                    <th style={{ padding: "8px 4px", textAlign: "right", color: "#6b7280" }}>
+                      Tax Saved
+                    </th>
+                    <th
+                      style={{
+                        padding: "8px 4px",
+                        textAlign: "right",
+                        color: "#6b7280",
+                        fontWeight: 600,
+                      }}
+                    >
+                      Net Cost
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {yearByYearData.map((year, idx) => (
                     <tr key={idx} style={{ borderBottom: "1px solid #f3f4f6" }}>
                       <td style={{ padding: "8px 4px", fontWeight: 500 }}>{year.year}</td>
-                      <td style={{ padding: "8px 4px", textAlign: "right" }}>${year.payments.toLocaleString()}</td>
-                      <td style={{ padding: "8px 4px", textAlign: "right" }}>${year.running.toLocaleString()}</td>
-                      <td style={{ padding: "8px 4px", textAlign: "right", color: "#059669" }}>-${year.taxSaved.toLocaleString()}</td>
-                      <td style={{ padding: "8px 4px", textAlign: "right", fontWeight: 600 }}>${year.netCost.toLocaleString()}</td>
+                      <td style={{ padding: "8px 4px", textAlign: "right" }}>
+                        ${year.payments.toLocaleString()}
+                      </td>
+                      <td style={{ padding: "8px 4px", textAlign: "right" }}>
+                        ${year.running.toLocaleString()}
+                      </td>
+                      <td style={{ padding: "8px 4px", textAlign: "right", color: "#059669" }}>
+                        -${year.taxSaved.toLocaleString()}
+                      </td>
+                      <td style={{ padding: "8px 4px", textAlign: "right", fontWeight: 600 }}>
+                        ${year.netCost.toLocaleString()}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr style={{ borderTop: "2px solid #e5e7eb", fontWeight: 600 }}>
                     <td style={{ padding: "8px 4px" }}>Total</td>
-                    <td style={{ padding: "8px 4px", textAlign: "right" }}>${yearByYearData.reduce((sum, y) => sum + y.payments, 0).toLocaleString()}</td>
-                    <td style={{ padding: "8px 4px", textAlign: "right" }}>${yearByYearData.reduce((sum, y) => sum + y.running, 0).toLocaleString()}</td>
-                    <td style={{ padding: "8px 4px", textAlign: "right", color: "#059669" }}>-${yearByYearData.reduce((sum, y) => sum + y.taxSaved, 0).toLocaleString()}</td>
-                    <td style={{ padding: "8px 4px", textAlign: "right" }}>${yearByYearData.reduce((sum, y) => sum + y.netCost, 0).toLocaleString()}</td>
+                    <td style={{ padding: "8px 4px", textAlign: "right" }}>
+                      $
+                      {yearByYearData
+                        .reduce((sum, y) => sum + y.payments, 0)
+                        .toLocaleString()}
+                    </td>
+                    <td style={{ padding: "8px 4px", textAlign: "right" }}>
+                      $
+                      {yearByYearData
+                        .reduce((sum, y) => sum + y.running, 0)
+                        .toLocaleString()}
+                    </td>
+                    <td style={{ padding: "8px 4px", textAlign: "right", color: "#059669" }}>
+                      -$
+                      {yearByYearData
+                        .reduce((sum, y) => sum + y.taxSaved, 0)
+                        .toLocaleString()}
+                    </td>
+                    <td style={{ padding: "8px 4px", textAlign: "right" }}>
+                      $
+                      {yearByYearData
+                        .reduce((sum, y) => sum + y.netCost, 0)
+                        .toLocaleString()}
+                    </td>
                   </tr>
                 </tfoot>
               </table>
             </div>
             <p style={{ fontSize: 10, color: "#9ca3af", marginTop: 8, marginBottom: 0 }}>
-              Shows annual loan payments, running costs, tax savings, and net out-of-pocket cost per year.
+              Shows annual loan payments, running costs, tax savings, and net out-of-pocket cost
+              per year.
             </p>
           </div>
         )}
       </div>
 
-      {/* Scenario Comparison */}
       <div style={{ ...resultsCardStyle, marginTop: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
           <h3
             style={{
               margin: 0,
@@ -380,10 +451,16 @@ const ResultsPanel = ({ result, formData }) => {
             {showScenarios ? "Hide" : "Show"}
           </button>
         </div>
-        
+
         {showScenarios && (
           <div style={{ marginTop: 12 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                gap: 10,
+              }}
+            >
               {scenarios.map((scenario, idx) => (
                 <ScenarioCard key={idx} scenario={scenario} isCurrent={scenario.isCurrent} />
               ))}
@@ -395,7 +472,6 @@ const ResultsPanel = ({ result, formData }) => {
         )}
       </div>
 
-      {/* Risk Flags */}
       {result.riskFlags && result.riskFlags.length > 0 && (
         <div style={{ ...resultsCardStyle, marginTop: 10 }}>
           <h3
@@ -414,7 +490,6 @@ const ResultsPanel = ({ result, formData }) => {
         </div>
       )}
 
-      {/* Positive Flags */}
       {result.positiveFlags && result.positiveFlags.length > 0 && (
         <div style={{ ...resultsCardStyle, marginTop: 10 }}>
           <h3
@@ -450,7 +525,6 @@ const ResultsPanel = ({ result, formData }) => {
         </div>
       )}
 
-      {/* Opportunity Flags */}
       {result.opportunityFlags && result.opportunityFlags.length > 0 && (
         <div style={{ ...resultsCardStyle, marginTop: 10 }}>
           <h3
@@ -486,7 +560,6 @@ const ResultsPanel = ({ result, formData }) => {
         </div>
       )}
 
-      {/* Disclaimer */}
       <div style={{ ...resultsCardStyle, marginTop: 10 }}>
         <p
           style={{
@@ -496,16 +569,15 @@ const ResultsPanel = ({ result, formData }) => {
             fontStyle: "italic",
           }}
         >
-          These outputs are for illustrative purposes only and do not
-          constitute financial or tax advice. Consult with a qualified
-          accountant or financial advisor before making any decisions.
+          These outputs are for illustrative purposes only and do not constitute financial or tax
+          advice. Consult with a qualified accountant or financial advisor before making any
+          decisions.
         </p>
       </div>
     </div>
   );
 };
 
-// Helper component for metric rows
 const MetricRow = ({ label, value, highlight, large }) => (
   <div
     style={{
@@ -535,27 +607,11 @@ const MetricRow = ({ label, value, highlight, large }) => (
   </div>
 );
 
-// Helper component for risk flags
 const RiskFlag = ({ flag }) => {
   const colors = {
-    critical: {
-      bg: "#fee2e2",
-      border: "#fca5a5",
-      text: "#991b1b",
-      icon: "🚨",
-    },
-    warning: {
-      bg: "#fef3c7",
-      border: "#fde047",
-      text: "#92400e",
-      icon: "⚠️",
-    },
-    advisory: {
-      bg: "#dbeafe",
-      border: "#93c5fd",
-      text: "#1e40af",
-      icon: "ℹ️",
-    },
+    critical: { bg: "#fee2e2", border: "#fca5a5", text: "#991b1b", icon: "🚨" },
+    warning: { bg: "#fef3c7", border: "#fde047", text: "#92400e", icon: "⚠️" },
+    advisory: { bg: "#dbeafe", border: "#93c5fd", text: "#1e40af", icon: "ℹ️" },
   };
 
   const style = colors[flag.severity] || colors.advisory;
@@ -581,9 +637,6 @@ const RiskFlag = ({ flag }) => {
   );
 };
 
-// ========== NEW HELPER COMPONENTS ==========
-
-// Tooltip component
 const Tooltip = ({ text }) => {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -649,10 +702,10 @@ const Tooltip = ({ text }) => {
   );
 };
 
-// Scenario comparison card
 const ScenarioCard = ({ scenario, isCurrent }) => {
-  const scoreColor = scenario.score >= 75 ? "#16a34a" : scenario.score >= 45 ? "#f59e0b" : "#dc2626";
-  
+  const scoreColor =
+    scenario.score >= 75 ? "#16a34a" : scenario.score >= 45 ? "#f59e0b" : "#dc2626";
+
   return (
     <div
       style={{
@@ -697,51 +750,47 @@ const ScenarioCard = ({ scenario, isCurrent }) => {
   );
 };
 
-// Generate scenarios for comparison
 const generateScenarios = (formData, currentResult) => {
   const basePrice = Number(formData.vehiclePrice) || 0;
-  
+
   const scenarios = [
-    {
-      name: "Current",
-      isCurrent: true,
-      data: formData,
-    },
-    {
-      name: "15% Cheaper",
-      isCurrent: false,
-      data: { ...formData, vehiclePrice: Math.round(basePrice * 0.85) },
-    },
-    {
-      name: "90% Business",
-      isCurrent: false,
-      data: { ...formData, businessUse: 90 },
-    },
-    {
-      name: "All Cash",
-      isCurrent: false,
-      data: { ...formData, paymentMethod: "cash" },
-    },
+    { name: "Current", isCurrent: true, data: formData },
+    { name: "15% Cheaper", isCurrent: false, data: { ...formData, vehiclePrice: Math.round(basePrice * 0.85) } },
+    { name: "90% Business", isCurrent: false, data: { ...formData, businessUse: 90 } },
+    { name: "All Cash", isCurrent: false, data: { ...formData, paymentMethod: "cash" } },
   ];
 
   return scenarios.map((s) => {
-    const result = s.isCurrent ? currentResult : calculateResults(s.data);
+    const computed =
+      s.isCurrent ? { results: { ui: currentResult } } : runVehicleEngine(s.data);
+
+    const ui = computed?.results?.ui || null;
+
+    if (!ui) {
+      return {
+        ...s,
+        score: 0,
+        totalCost: 0,
+        description: "Invalid inputs",
+      };
+    }
+
     return {
       ...s,
-      score: result.overall,
-      totalCost: Number(result.totalCostOfOwnership),
-      description: s.isCurrent 
-        ? `${Number(formData.vehiclePrice).toLocaleString()}, ${formData.businessUse}% business`
-        : s.name === "15% Cheaper"
-        ? `${s.data.vehiclePrice.toLocaleString()}`
-        : s.name === "90% Business"
-        ? `${s.data.businessUse}% business use`
-        : "No financing costs",
+      score: ui.overall,
+      totalCost: Number(ui.totalCostOfOwnership),
+      description:
+        s.isCurrent
+          ? `${Number(formData.vehiclePrice).toLocaleString()}, ${formData.businessUse}% business`
+          : s.name === "15% Cheaper"
+          ? `${s.data.vehiclePrice.toLocaleString()}`
+          : s.name === "90% Business"
+          ? `${s.data.businessUse}% business use`
+          : "No financing costs",
     };
   });
 };
 
-// Generate year-by-year breakdown
 const generateYearByYear = (formData, result) => {
   const years = Number(formData.ownershipPeriod) || 5;
   const monthlyPayment = Number(result.monthlyPayment) || 0;
@@ -750,18 +799,16 @@ const generateYearByYear = (formData, result) => {
   const instantWriteOff = result.instantWriteOffEligible;
 
   const yearlyData = [];
-  
+
   for (let year = 1; year <= years; year++) {
     const payments = monthlyPayment * 12;
     const running = monthlyRunning * 12;
-    
-    // Tax savings distribution
+
     let taxSaved = 0;
     if (instantWriteOff && year === 1) {
       taxSaved = totalTaxSavings;
     } else if (!instantWriteOff) {
-      // Distribute depreciation tax savings (diminishing value method approximation)
-      const depreciationRate = 0.25; // Rough average
+      const depreciationRate = 0.25;
       const remainingYears = years - year + 1;
       taxSaved = totalTaxSavings * (depreciationRate / remainingYears);
     }
