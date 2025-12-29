@@ -266,39 +266,71 @@ function generateOpportunityFlags(price, totalCostOfOwnership, depreciation, bus
 }
 
 function calculateScores(depreciation, cashFlow, businessUsePct, taxRate, riskFlags) {
-  let taxScore = depreciation.instantWriteOffEligible ? 95 : 75
-  if (businessUsePct < 50) taxScore -= 15
-  if (taxRate === 0) taxScore -= 10
-  taxScore = Math.max(0, Math.min(100, taxScore))
+  // ---------- TAX SCORE (0–100) ----------
+  let taxScore = 70;
 
-  let cashFlowScore = 100
-  if (cashFlow.paymentToIncomeRatio > 0.25) cashFlowScore = 30
-  else if (cashFlow.paymentToIncomeRatio > 0.15) cashFlowScore = 55
-  else if (cashFlow.paymentToIncomeRatio > 0.10) cashFlowScore = 75
-  else if (cashFlow.paymentToIncomeRatio > 0.05) cashFlowScore = 88
+  if (depreciation.instantWriteOffEligible) taxScore += 20;
 
+  // Business use now scales continuously (not binary)
+  taxScore += Math.min(15, businessUsePct * 0.15);
+
+  // Low marginal tax rate reduces value of deductions
+  if (taxRate < 0.19) taxScore -= 10;
+  else if (taxRate < 0.325) taxScore -= 5;
+
+  taxScore = Math.max(0, Math.min(100, taxScore));
+
+  // ---------- CASH FLOW SCORE (0–100) ----------
+  const pti = cashFlow.paymentToIncomeRatio;
+
+  // Smooth curve instead of step function
+  let cashFlowScore =
+    pti <= 0.05 ? 95
+    : pti <= 0.10 ? 95 - (pti - 0.05) * 400
+    : pti <= 0.20 ? 75 - (pti - 0.10) * 300
+    : pti <= 0.30 ? 45 - (pti - 0.20) * 250
+    : 20;
+
+  cashFlowScore = Math.max(0, Math.min(100, cashFlowScore));
+
+  // ---------- SAFETY SCORE (0–100) ----------
+  const months = cashFlow.monthsOfReserves;
+
+  // Continuous reserve curve
   let safetyScore =
-    cashFlow.monthsOfReserves < 1 ? 25
-      : cashFlow.monthsOfReserves < 3 ? 55
-      : cashFlow.monthsOfReserves < 6 ? 80
-      : 100
+    months >= 12 ? 100
+    : months >= 6 ? 80 + (months - 6) * 3.3
+    : months >= 3 ? 55 + (months - 3) * 8.3
+    : months >= 1 ? 30 + (months - 1) * 12.5
+    : 15;
 
-  let overall = taxScore * 0.35 + cashFlowScore * 0.35 + safetyScore * 0.30
+  safetyScore = Math.max(0, Math.min(100, safetyScore));
 
-  const criticalCount = riskFlags.filter(r => r.severity === 'critical').length
-  const warningCount = riskFlags.filter(r => r.severity === 'warning').length
-  const advisoryCount = riskFlags.filter(r => r.severity === 'advisory').length
+  // ---------- BASE WEIGHTED SCORE ----------
+  let overall =
+    taxScore * 0.30 +
+    cashFlowScore * 0.40 +
+    safetyScore * 0.30;
 
-  overall -= (criticalCount * 7 + warningCount * 4 + advisoryCount * 2)
-  overall = Math.round(Math.max(0, Math.min(100, overall)))
+  // ---------- RISK PENALTIES ----------
+  const criticalCount = riskFlags.filter(r => r.severity === 'critical').length;
+  const warningCount = riskFlags.filter(r => r.severity === 'warning').length;
+  const advisoryCount = riskFlags.filter(r => r.severity === 'advisory').length;
+
+  overall -= criticalCount * 8;
+  overall -= warningCount * 4;
+  overall -= advisoryCount * 1.5;
+
+  overall = Math.round(Math.max(0, Math.min(100, overall)));
 
   return {
     overall,
     taxScore: Math.round(taxScore),
     cashFlowScore: Math.round(cashFlowScore),
     safetyScore: Math.round(safetyScore)
-  }
+  };
 }
+
 
 function generateSummary(score, riskFlags) {
   const criticalRisks = riskFlags.filter(r => r.severity === 'critical')

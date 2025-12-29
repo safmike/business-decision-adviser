@@ -12,6 +12,7 @@ const initialState = {
 export const ACTIONS = {
   SET_INPUTS: "SET_INPUTS",
   SET_RESULTS: "SET_RESULTS",
+  SET_ISSUES: "SET_ISSUES",
   ADD_ISSUE: "ADD_ISSUE",
   CLEAR_ISSUES: "CLEAR_ISSUES",
   SET_CALCULATING: "SET_CALCULATING",
@@ -22,6 +23,8 @@ export const ACTIONS = {
 
 function decisionReducer(state, action) {
   switch (action.type) {
+    case ACTIONS.SET_ISSUES:
+     return { ...state, issues: action.payload || [] };
     case ACTIONS.SET_INPUTS:
       return {
         ...state,
@@ -72,6 +75,8 @@ export function DecisionProvider({ children }) {
     state,
     setInputs: (inputs) =>
       dispatch({ type: ACTIONS.SET_INPUTS, payload: inputs }),
+    setIssues: (issues) =>
+      dispatch({ type: ACTIONS.SET_ISSUES, payload: issues }),
     setResults: (results) =>
       dispatch({ type: ACTIONS.SET_RESULTS, payload: results }),
     addIssue: (issue) =>
@@ -83,7 +88,7 @@ export function DecisionProvider({ children }) {
     reset: () => dispatch({ type: ACTIONS.RESET }),
   };
 
-  return (
+    return (
     <DecisionContext.Provider value={value}>
       {children}
     </DecisionContext.Provider>

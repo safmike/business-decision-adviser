@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef } from "react";
+import { generateVehicleScenarios } from "../logic/vehicle/scenarios.js";
 import BackButton from "../components/BackButton.jsx";
 import LabeledInput from "../components/LabeledInput.jsx";
 import ResultsPanel from "../components/ResultsPanel.jsx";
-import { calculateResults } from "../utils/calculations";
+import { runVehicleEngine } from "../logic/vehicle/engine.js";
+import { useDecision } from "../contexts/DecisionContext.jsx";
 import {
   outerShellStyle,
   scrollContainerStyle,
@@ -17,55 +19,165 @@ import {
   inputStyle,
 } from "../styles";
 
-const VehicleAnalysis = ({ onBack }) => {
-  const [formData, setFormData] = useState({
-    vehiclePrice: "",
-    businessUse: 80,
-    paymentMethod: "finance",
-    cashAmount: "",
-    financeAmount: "",
-    loanTerm: 5,
-    interestRate: 7.5,
-    annualIncome: "",
-    annualExpenses: "",
-    cashReserves: "",
-    annualKm: 15000,
-    vehicleType: "sedan",
-    ownershipPeriod: 5,
-    entityType: "individual",
-  });
+const DEFAULT_INPUTS = {
+  vehiclePrice: "",
+  businessUse: 80,
+  paymentMethod: "finance",
+  cashAmount: "",
+  financeAmount: "",
+  loanTerm: 5,
+  interestRate: 7.5,
+  annualIncome: "",
+  annualExpenses: "",
+  cashReserves: "",
+  annualKm: 15000,
+  vehicleType: "sedan",
+  ownershipPeriod: 5,
+  entityType: "individual",
+};
 
-  const [result, setResult] = useState(null);
-  const [showResults, setShowResults] = useState(false);
+const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
+
+const VehicleAnalysis = ({ onBack }) => {
+  const { state, setInputs, setResults, setCalculating, setIssues } = useDecision();
+
+console.log("CTX functions:", {
+  setInputs,
+  setResults,
+  setCalculating,
+  setIssues,
+});
+
+// Tracks which split field user last edited ("cash" | "finance" | null)
+  const lastSplitEditedRef = useRef(null);
+
+  // Initialise global inputs once
+  useEffect(() => {
+    if (!state.inputs) setInputs(DEFAULT_INPUTS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.inputs]);
+
+  const formData = state.inputs ?? DEFAULT_INPUTS;
+  const result = state.results;
+  const showResults = Boolean(state.results);
 
   const handleChange = (field) => (e) => {
     const { type, value } = e.target;
     const numericTypes = ["number", "range"];
-    const parsed =
-      numericTypes.includes(type) && value !== "" ? Number(value) : value;
+    const parsed = numericTypes.includes(type) && value !== "" ? Number(value) : value;
 
-    setFormData((prev) => ({
-      ...prev,
+    let next = {
+      ...formData,
       [field]: parsed,
-    }));
+    };
+
+    // Track which split side the user is controlling
+    if (field === "cashAmount") lastSplitEditedRef.current = "cash";
+    if (field === "financeAmount") lastSplitEditedRef.current = "finance";
+
+   // Auto-calc split amounts
+if (next.paymentMethod === "split") {
+  const price = Number(next.vehiclePrice) || 0;
+
+  if (field === "cashAmount") {
+    // allow empty while typing
+    if (next.cashAmount === "" || next.cashAmount === null || next.cashAmount === undefined) {
+      next.financeAmount = "";
+    } else {
+      const cash = clamp(Number(next.cashAmount), 0, price);
+      next.cashAmount = cash;
+      next.financeAmount = clamp(price - cash, 0, price);
+    }
+  } else if (field === "financeAmount") {
+    // allow empty while typing
+    if (
+      next.financeAmount === "" ||
+      next.financeAmount === null ||
+      next.financeAmount === undefined
+    ) {
+      next.cashAmount = "";
+    } else {
+      const fin = clamp(Number(next.financeAmount), 0, price);
+      next.financeAmount = fin;
+      next.cashAmount = clamp(price - fin, 0, price);
+    }
+  } else if (field === "vehiclePrice") {
+    // price changed — preserve last edited side
+    const last = lastSplitEditedRef.current;
+
+    if (last === "cash") {
+      const cash = clamp(Number(next.cashAmount) || 0, 0, price);
+      next.cashAmount = cash;
+      next.financeAmount = clamp(price - cash, 0, price);
+    } else if (last === "finance") {
+      const fin = clamp(Number(next.financeAmount) || 0, 0, price);
+      next.financeAmount = fin;
+      next.cashAmount = clamp(price - fin, 0, price);
+    }
+  }
+}
+    setInputs(next);
   };
 
   const handlePaymentMethodClick = (method) => {
-    setFormData((prev) => ({ ...prev, paymentMethod: method }));
+    let next = { ...formData, paymentMethod: method };
+
+    // When switching to split, initialise amounts nicely
+    if (method === "split") {
+      const price = Number(next.vehiclePrice) || 0;
+
+      const hasCash = next.cashAmount !== "" && next.cashAmount !== null && next.cashAmount !== undefined;
+      const hasFin =
+        next.financeAmount !== "" && next.financeAmount !== null && next.financeAmount !== undefined;
+
+      if (!hasCash && !hasFin) {
+        const cash = clamp(Math.round(price * 0.2), 0, price);
+        next.cashAmount = cash;
+        next.financeAmount = clamp(price - cash, 0, price);
+        lastSplitEditedRef.current = "cash";
+      } else if (hasCash && !hasFin) {
+        const cash = clamp(Number(next.cashAmount) || 0, 0, price);
+        next.cashAmount = cash;
+        next.financeAmount = clamp(price - cash, 0, price);
+        lastSplitEditedRef.current = "cash";
+      } else if (!hasCash && hasFin) {
+        const fin = clamp(Number(next.financeAmount) || 0, 0, price);
+        next.financeAmount = fin;
+        next.cashAmount = clamp(price - fin, 0, price);
+        lastSplitEditedRef.current = "finance";
+      } else {
+        // Both exist - keep them as-is, but set a default controller
+        if (!lastSplitEditedRef.current) lastSplitEditedRef.current = "cash";
+      }
+    }
+
+    setInputs(next);
   };
 
-  const handleCalculate = () => {
-    const results = calculateResults(formData);
-    setResult(results);
-    setShowResults(true);
-  };
+const handleCalculate = () => {
+  console.log("ANALYZE CLICKED", formData);
+
+  setCalculating(true);
+
+  const computed = runVehicleEngine(formData);
+  console.log("ENGINE OUTPUT", computed);
+
+  setIssues(computed.issues || []);
+
+    const ui = computed?.results?.ui ?? null;
+  console.log("UI RESULTS", ui);
+
+  setResults(ui);
+};
 
   const handleBackToForm = () => {
-    setShowResults(false);
+    // Return to form view by clearing results (keep inputs intact)
+    setResults(null);
   };
 
   // Determine which payment fields to show
-  const showFinanceFields = formData.paymentMethod === "finance" || formData.paymentMethod === "split";
+  const showFinanceFields =
+    formData.paymentMethod === "finance" || formData.paymentMethod === "split";
   const showCashField = formData.paymentMethod === "split";
 
   // If showing results, render results screen
@@ -91,15 +203,13 @@ const VehicleAnalysis = ({ onBack }) => {
               <span style={{ fontSize: 15 }}>←</span>
               <span>Back to Form</span>
             </button>
-            
+
             <div style={headerStyle}>
               <div style={iconCircleStyle}>
                 <span style={{ fontSize: 28 }}>📊</span>
               </div>
               <h1 style={titleStyle}>Analysis Complete</h1>
-              <p style={subtitleStyle}>
-                Here's your comprehensive financial analysis
-              </p>
+              <p style={subtitleStyle}>Here's your comprehensive financial analysis</p>
             </div>
 
             <ResultsPanel result={result} formData={formData} />
@@ -122,8 +232,8 @@ const VehicleAnalysis = ({ onBack }) => {
             </div>
             <h1 style={titleStyle}>Vehicle Purchase Analysis</h1>
             <p style={subtitleStyle}>
-              Complete the details below for a comprehensive financial analysis
-              of your vehicle purchase decision.
+              Complete the details below for a comprehensive financial analysis of your vehicle
+              purchase decision.
             </p>
           </div>
 
@@ -200,12 +310,8 @@ const VehicleAnalysis = ({ onBack }) => {
                           ...(active ? activePaymentButtonStyle : {}),
                         }}
                       >
-                        <span style={{ fontSize: 20, marginBottom: 4 }}>
-                          {method.icon}
-                        </span>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>
-                          {method.label}
-                        </span>
+                        <span style={{ fontSize: 20, marginBottom: 4 }}>{method.icon}</span>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{method.label}</span>
                       </button>
                     );
                   })}
@@ -230,7 +336,7 @@ const VehicleAnalysis = ({ onBack }) => {
                   {formData.paymentMethod === "split" && (
                     <LabeledInput
                       label="Finance Amount ($)"
-                      placeholder="e.g. 45,000"
+                      placeholder="Auto-calculates remaining balance"
                       type="number"
                       value={formData.financeAmount}
                       onChange={handleChange("financeAmount")}
@@ -324,11 +430,7 @@ const Section = ({ icon, title, children }) => (
 const SelectField = ({ label, value, onChange, options }) => (
   <div style={fieldBlockStyle}>
     <label style={labelStyle}>{label}</label>
-    <select
-      value={value}
-      onChange={onChange}
-      style={selectStyle}
-    >
+    <select value={value} onChange={onChange} style={selectStyle}>
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>
           {opt.label}
@@ -342,7 +444,10 @@ const SliderField = ({ label, value, onChange, suffix }) => (
   <div style={fieldBlockStyle}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
       <label style={labelStyle}>{label}</label>
-      <span style={sliderValueStyle}>{value}{suffix}</span>
+      <span style={sliderValueStyle}>
+        {value}
+        {suffix}
+      </span>
     </div>
     <input
       type="range"
