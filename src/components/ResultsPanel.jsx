@@ -1,25 +1,23 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import MetricTile from "./MetricTile.jsx";
 import InsightRow from "./InsightRow.jsx";
 import { resultsCardStyle, PRIMARY } from "../styles";
 import { runVehicleEngine } from "../logic/vehicle/engine.js";
-import { useDecision } from "../contexts/DecisionContext.jsx";
 
-const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
-  const { state } = useDecision();
-
-  // Prefer props if provided (backwards compatible), otherwise use context
-  const result = resultProp ?? state.results;
-  const formData = formDataProp ?? state.inputs;
-
+const ResultsPanel = ({ result, formData }) => {
   const [showScenarios, setShowScenarios] = useState(false);
   const [showYearByYear, setShowYearByYear] = useState(false);
 
-  // Guard: if results not available yet
   if (!result) {
     return (
       <div style={resultsCardStyle}>
-        <p style={{ margin: 0, fontSize: 13, color: "#6b7280" }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
+            color: "#6b7280",
+          }}
+        >
           Complete the form above and click "Analyze Decision" to see a
           comprehensive financial analysis of this vehicle purchase.
         </p>
@@ -27,21 +25,11 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
     );
   }
 
-  // Guard: scenarios/year-by-year need inputs too
-  const safeFormData = formData || {};
-
   const gaugeColor =
     result.overall >= 75 ? "#16a34a" : result.overall >= 45 ? "#f59e0b" : "#dc2626";
 
-  const scenarios = useMemo(
-    () => generateScenarios(safeFormData, result),
-    [safeFormData, result]
-  );
-
-  const yearByYearData = useMemo(
-    () => generateYearByYear(safeFormData, result),
-    [safeFormData, result]
-  );
+  const scenarios = generateScenarios(formData, result);
+  const yearByYearData = generateYearByYear(formData, result);
 
   return (
     <div style={{ marginTop: 22 }}>
@@ -63,10 +51,22 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
           marginBottom: 14,
         }}
       >
-        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#166534" }}>
+        <p
+          style={{
+            margin: "0 0 8px",
+            fontSize: 12,
+            color: "#166534",
+          }}
+        >
           Overall Decision Score
         </p>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+          }}
+        >
           <div
             style={{
               width: 90,
@@ -80,17 +80,48 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
             }}
           >
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 24, fontWeight: 700, color: gaugeColor }}>
+              <div
+                style={{
+                  fontSize: 24,
+                  fontWeight: 700,
+                  color: gaugeColor,
+                }}
+              >
                 {result.overall}
               </div>
-              <div style={{ fontSize: 11, color: "#6b7280" }}>out of 100</div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#6b7280",
+                }}
+              >
+                out of 100
+              </div>
             </div>
           </div>
-          <p style={{ margin: 0, fontSize: 13, color: "#166534" }}>
+          <p
+            style={{
+              margin: 0,
+              fontSize: 13,
+              color: "#166534",
+            }}
+          >
             {result.summary}
           </p>
         </div>
       </div>
+
+<p
+        style={{
+          margin: "0 0 12px",
+          fontSize: 13,
+          color: "#4b5563",
+          textAlign: "center",
+          fontWeight: 500,
+        }}
+      >
+        💡 Click any metric to learn more
+      </p>
 
       <div
         style={{
@@ -284,7 +315,14 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
             marginBottom: 8,
           }}
         >
-          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#111827" }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#111827",
+            }}
+          >
             📅 Year-by-Year Breakdown
           </h3>
           <button
@@ -357,27 +395,35 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
                     <td style={{ padding: "8px 4px" }}>Total</td>
                     <td style={{ padding: "8px 4px", textAlign: "right" }}>
                       $
-                      {yearByYearData.reduce((sum, y) => sum + y.payments, 0).toLocaleString()}
+                      {yearByYearData
+                        .reduce((sum, y) => sum + y.payments, 0)
+                        .toLocaleString()}
                     </td>
                     <td style={{ padding: "8px 4px", textAlign: "right" }}>
                       $
-                      {yearByYearData.reduce((sum, y) => sum + y.running, 0).toLocaleString()}
+                      {yearByYearData
+                        .reduce((sum, y) => sum + y.running, 0)
+                        .toLocaleString()}
                     </td>
                     <td style={{ padding: "8px 4px", textAlign: "right", color: "#059669" }}>
                       -$
-                      {yearByYearData.reduce((sum, y) => sum + y.taxSaved, 0).toLocaleString()}
+                      {yearByYearData
+                        .reduce((sum, y) => sum + y.taxSaved, 0)
+                        .toLocaleString()}
                     </td>
                     <td style={{ padding: "8px 4px", textAlign: "right" }}>
                       $
-                      {yearByYearData.reduce((sum, y) => sum + y.netCost, 0).toLocaleString()}
+                      {yearByYearData
+                        .reduce((sum, y) => sum + y.netCost, 0)
+                        .toLocaleString()}
                     </td>
                   </tr>
                 </tfoot>
               </table>
             </div>
             <p style={{ fontSize: 10, color: "#9ca3af", marginTop: 8, marginBottom: 0 }}>
-              Shows annual loan payments, running costs, tax savings, and net out-of-pocket cost per
-              year.
+              Shows annual loan payments, running costs, tax savings, and net out-of-pocket cost
+              per year.
             </p>
           </div>
         )}
@@ -392,7 +438,14 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
             marginBottom: 8,
           }}
         >
-          <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#111827" }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#111827",
+            }}
+          >
             🔄 Compare Scenarios
           </h3>
           <button
@@ -433,7 +486,14 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
 
       {result.riskFlags && result.riskFlags.length > 0 && (
         <div style={{ ...resultsCardStyle, marginTop: 10 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600, color: "#111827" }}>
+          <h3
+            style={{
+              margin: "0 0 8px",
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#111827",
+            }}
+          >
             Risk Assessment
           </h3>
           {result.riskFlags.map((flag, idx) => (
@@ -444,7 +504,14 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
 
       {result.positiveFlags && result.positiveFlags.length > 0 && (
         <div style={{ ...resultsCardStyle, marginTop: 10 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600, color: "#059669" }}>
+          <h3
+            style={{
+              margin: "0 0 8px",
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#059669",
+            }}
+          >
             Positive Indicators
           </h3>
           {result.positiveFlags.map((flag, idx) => (
@@ -472,7 +539,14 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
 
       {result.opportunityFlags && result.opportunityFlags.length > 0 && (
         <div style={{ ...resultsCardStyle, marginTop: 10 }}>
-          <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 600, color: "#0369a1" }}>
+          <h3
+            style={{
+              margin: "0 0 8px",
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#0369a1",
+            }}
+          >
             Opportunities to Consider
           </h3>
           {result.opportunityFlags.map((flag, idx) => (
@@ -499,7 +573,14 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
       )}
 
       <div style={{ ...resultsCardStyle, marginTop: 10 }}>
-        <p style={{ margin: 0, fontSize: 11, color: "#9ca3af", fontStyle: "italic" }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 11,
+            color: "#9ca3af",
+            fontStyle: "italic",
+          }}
+        >
           These outputs are for illustrative purposes only and do not constitute financial or tax
           advice. Consult with a qualified accountant or financial advisor before making any
           decisions.
@@ -510,7 +591,13 @@ const ResultsPanel = ({ result: resultProp, formData: formDataProp }) => {
 };
 
 const MetricRow = ({ label, value, highlight, large }) => (
-  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+    }}
+  >
     <span
       style={{
         color: "#6b7280",
@@ -680,17 +767,15 @@ const generateScenarios = (formData, currentResult) => {
 
   const scenarios = [
     { name: "Current", isCurrent: true, data: formData },
-    {
-      name: "15% Cheaper",
-      isCurrent: false,
-      data: { ...formData, vehiclePrice: Math.round(basePrice * 0.85) },
-    },
+    { name: "15% Cheaper", isCurrent: false, data: { ...formData, vehiclePrice: Math.round(basePrice * 0.85) } },
     { name: "90% Business", isCurrent: false, data: { ...formData, businessUse: 90 } },
     { name: "All Cash", isCurrent: false, data: { ...formData, paymentMethod: "cash" } },
   ];
 
   return scenarios.map((s) => {
-    const computed = s.isCurrent ? { results: { ui: currentResult } } : runVehicleEngine(s.data);
+    const computed =
+      s.isCurrent ? { results: { ui: currentResult } } : runVehicleEngine(s.data);
+
     const ui = computed?.results?.ui || null;
 
     if (!ui) {
@@ -755,3 +840,4 @@ const generateYearByYear = (formData, result) => {
 };
 
 export default ResultsPanel;
+ 

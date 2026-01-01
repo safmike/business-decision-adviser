@@ -114,3 +114,66 @@ button:disabled {
     grid-template-columns: 1fr !important;
   }
 }
+.metric-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-icon {
+  position: relative;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+}
+
+.tooltip {
+  display: none;
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222;
+  color: #fff;
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.info-icon:hover .tooltip {
+  display: block;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #fff;
+  padding: 16px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+}
+
+.modal-section {
+  margin-bottom: 12px;
+}
+
+.modal button {
+  margin-top: 8px;
+}
+
+/* Show the tooltip on hover (desktop) */
+span[role="button"]:hover .metric-tooltip {
+  display: inline-block !important;
+}
