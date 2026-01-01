@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import MetricTile from "./MetricTile.jsx";
 import InsightRow from "./InsightRow.jsx";
 import { resultsCardStyle, PRIMARY } from "../styles";
-import { runVehicleEngine } from "../logic/vehicle/engine.js";
+import { generateVehicleScenarios } from "../logic/vehicle/scenarios.js";
 
 const ResultsPanel = ({ result, formData }) => {
   const [showScenarios, setShowScenarios] = useState(false);
@@ -28,7 +28,7 @@ const ResultsPanel = ({ result, formData }) => {
   const gaugeColor =
     result.overall >= 75 ? "#16a34a" : result.overall >= 45 ? "#f59e0b" : "#dc2626";
 
-  const scenarios = generateScenarios(formData, result);
+  const scenarios = generateScenarios(formData);
   const yearByYearData = generateYearByYear(formData, result);
 
   return (
@@ -135,6 +135,170 @@ const ResultsPanel = ({ result, formData }) => {
         <MetricTile label="Cash Flow" value={result.cashFlowScore} />
         <MetricTile label="Financial Safety" value={result.safetyScore} />
       </div>
+
+{/* ENHANCED RISK & OPPORTUNITY ANALYSIS - Moved up for prominence */}
+{(result.riskFlags?.length > 0 || result.positiveFlags?.length > 0 || result.opportunityFlags?.length > 0) && (
+  <div style={{ marginBottom: 16 }}>
+    <h3
+      style={{
+        margin: "0 0 12px",
+        fontSize: 15,
+        fontWeight: 700,
+        color: "#111827",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <span style={{ fontSize: 20 }}>🎯</span>
+      Key Insights & Recommendations
+    </h3>
+
+    {/* RISK ASSESSMENT - Enhanced */}
+    {result.riskFlags && result.riskFlags.length > 0 && (
+      <div style={{ 
+        ...resultsCardStyle, 
+        marginBottom: 12,
+        border: "2px solid #fca5a5",
+        backgroundColor: "#fef2f2",
+      }}>
+        <h4
+          style={{
+            margin: "0 0 10px",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#991b1b",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          ⚠️ Risk Assessment
+        </h4>
+        {result.riskFlags.map((flag, idx) => {
+          const colors = {
+            critical: { bg: "#fee2e2", border: "#fca5a5", text: "#991b1b", icon: "🚨" },
+            warning: { bg: "#fef3c7", border: "#fde047", text: "#92400e", icon: "⚠️" },
+            advisory: { bg: "#dbeafe", border: "#93c5fd", text: "#1e40af", icon: "ℹ️" },
+          };
+          const style = colors[flag.severity] || colors.advisory;
+
+          return (
+            <div
+              key={idx}
+              style={{
+                display: "flex",
+                gap: 10,
+                alignItems: "flex-start",
+                padding: "10px 12px",
+                borderRadius: 10,
+                backgroundColor: style.bg,
+                border: `1.5px solid ${style.border}`,
+                marginBottom: 8,
+                fontSize: 13,
+                color: style.text,
+                fontWeight: 500,
+              }}
+            >
+              <span style={{ fontSize: 18, flexShrink: 0 }}>{style.icon}</span>
+              <span style={{ lineHeight: 1.5 }}>{flag.message}</span>
+            </div>
+          );
+        })}
+      </div>
+    )}
+
+    {/* POSITIVE INDICATORS - Enhanced */}
+    {result.positiveFlags && result.positiveFlags.length > 0 && (
+      <div style={{ 
+        ...resultsCardStyle, 
+        marginBottom: 12,
+        border: "2px solid #86efac",
+        backgroundColor: "#f0fdf4",
+      }}>
+        <h4
+          style={{
+            margin: "0 0 10px",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#166534",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          ✅ Strengths
+        </h4>
+        {result.positiveFlags.map((flag, idx) => (
+          <div
+            key={idx}
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              padding: "10px 12px",
+              borderRadius: 10,
+              backgroundColor: "#dcfce7",
+              border: "1.5px solid #86efac",
+              marginBottom: 8,
+              fontSize: 13,
+              color: "#166534",
+              fontWeight: 500,
+            }}
+          >
+            <span style={{ fontSize: 18, flexShrink: 0 }}>✓</span>
+            <span style={{ lineHeight: 1.5 }}>{flag.message}</span>
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* OPPORTUNITIES - Enhanced */}
+    {result.opportunityFlags && result.opportunityFlags.length > 0 && (
+      <div style={{ 
+        ...resultsCardStyle, 
+        marginBottom: 12,
+        border: "2px solid #7dd3fc",
+        backgroundColor: "#f0f9ff",
+      }}>
+        <h4
+          style={{
+            margin: "0 0 10px",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#0c4a6e",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          💡 Optimization Opportunities
+        </h4>
+        {result.opportunityFlags.map((flag, idx) => (
+          <div
+            key={idx}
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              padding: "10px 12px",
+              borderRadius: 10,
+              backgroundColor: "#e0f2fe",
+              border: "1.5px solid #7dd3fc",
+              marginBottom: 8,
+              fontSize: 13,
+              color: "#0c4a6e",
+              fontWeight: 500,
+            }}
+          >
+            <span style={{ fontSize: 18, flexShrink: 0 }}>💡</span>
+            <span style={{ lineHeight: 1.5 }}>{flag.message}</span>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
 
       <div style={resultsCardStyle}>
         <h3
@@ -484,94 +648,6 @@ const ResultsPanel = ({ result, formData }) => {
         )}
       </div>
 
-      {result.riskFlags && result.riskFlags.length > 0 && (
-        <div style={{ ...resultsCardStyle, marginTop: 10 }}>
-          <h3
-            style={{
-              margin: "0 0 8px",
-              fontSize: 14,
-              fontWeight: 600,
-              color: "#111827",
-            }}
-          >
-            Risk Assessment
-          </h3>
-          {result.riskFlags.map((flag, idx) => (
-            <RiskFlag key={idx} flag={flag} />
-          ))}
-        </div>
-      )}
-
-      {result.positiveFlags && result.positiveFlags.length > 0 && (
-        <div style={{ ...resultsCardStyle, marginTop: 10 }}>
-          <h3
-            style={{
-              margin: "0 0 8px",
-              fontSize: 14,
-              fontWeight: 600,
-              color: "#059669",
-            }}
-          >
-            Positive Indicators
-          </h3>
-          {result.positiveFlags.map((flag, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "flex-start",
-                padding: "8px 10px",
-                borderRadius: 8,
-                backgroundColor: "#d1fae5",
-                border: "1px solid #86efac",
-                marginBottom: 6,
-                fontSize: 12,
-                color: "#065f46",
-              }}
-            >
-              <span style={{ fontSize: 16 }}>✓</span>
-              <span>{flag.message}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {result.opportunityFlags && result.opportunityFlags.length > 0 && (
-        <div style={{ ...resultsCardStyle, marginTop: 10 }}>
-          <h3
-            style={{
-              margin: "0 0 8px",
-              fontSize: 14,
-              fontWeight: 600,
-              color: "#0369a1",
-            }}
-          >
-            Opportunities to Consider
-          </h3>
-          {result.opportunityFlags.map((flag, idx) => (
-            <div
-              key={idx}
-              style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "flex-start",
-                padding: "8px 10px",
-                borderRadius: 8,
-                backgroundColor: "#e0f2fe",
-                border: "1px solid #7dd3fc",
-                marginBottom: 6,
-                fontSize: 12,
-                color: "#0c4a6e",
-              }}
-            >
-              <span style={{ fontSize: 16 }}>💡</span>
-              <span>{flag.message}</span>
-            </div>
-          ))}
-        </div>
-      )}
-
       <div style={{ ...resultsCardStyle, marginTop: 10 }}>
         <p
           style={{
@@ -761,44 +837,44 @@ const ScenarioCard = ({ scenario, isCurrent }) => {
     </div>
   );
 };
-
-const generateScenarios = (formData, currentResult) => {
-  const basePrice = Number(formData.vehiclePrice) || 0;
-
-  const scenarios = [
-    { name: "Current", isCurrent: true, data: formData },
-    { name: "15% Cheaper", isCurrent: false, data: { ...formData, vehiclePrice: Math.round(basePrice * 0.85) } },
-    { name: "90% Business", isCurrent: false, data: { ...formData, businessUse: 90 } },
-    { name: "All Cash", isCurrent: false, data: { ...formData, paymentMethod: "cash" } },
-  ];
-
-  return scenarios.map((s) => {
-    const computed =
-      s.isCurrent ? { results: { ui: currentResult } } : runVehicleEngine(s.data);
-
-    const ui = computed?.results?.ui || null;
-
+const generateScenarios = (formData) => {
+  const allScenarios = generateVehicleScenarios(formData);
+  
+  return allScenarios.map((s) => {
+    const ui = s.ui;
+    
     if (!ui) {
       return {
-        ...s,
+        name: s.name,
+        isCurrent: s.id === "current",
         score: 0,
         totalCost: 0,
         description: "Invalid inputs",
       };
     }
 
+    // Generate smart descriptions based on scenario type
+    let description = "";
+    const price = Number(s.inputs.vehiclePrice || 0);
+    const businessUse = Number(s.inputs.businessUse || 0);
+    const interestRate = Number(s.inputs.interestRate || 0);
+    
+    if (s.id === "current") {
+      description = `$${price.toLocaleString()}, ${businessUse}% business`;
+    } else if (s.id === "price_20pct") {
+      description = `$${price.toLocaleString()} vehicle`;
+    } else if (s.id === "rate_stress") {
+      description = `${interestRate.toFixed(1)}% interest`;
+    } else if (s.id === "business_max") {
+      description = `${businessUse}% business use`;
+    }
+
     return {
-      ...s,
+      name: s.name,
+      isCurrent: s.id === "current",
       score: ui.overall,
       totalCost: Number(ui.totalCostOfOwnership),
-      description:
-        s.isCurrent
-          ? `${Number(formData.vehiclePrice).toLocaleString()}, ${formData.businessUse}% business`
-          : s.name === "15% Cheaper"
-          ? `${s.data.vehiclePrice.toLocaleString()}`
-          : s.name === "90% Business"
-          ? `${s.data.businessUse}% business use`
-          : "No financing costs",
+      description,
     };
   });
 };

@@ -194,7 +194,6 @@ function analyzeCashFlow(income, expenses, reserves, loanPayment, runningCost, c
     paymentToIncomeRatio
   }
 }
-
 function generateRiskFlags(cashFlow, lct, fbt, businessUsePct, annualKm, price, income) {
   const flags = []
 
@@ -242,6 +241,11 @@ function generatePositiveFlags(cashFlow, depreciation, businessUsePct, price, re
     flags.push({ message: 'Conservative purchase - vehicle cost is less than half your reserves.' })
   }
 
+  // FALLBACK: If no specific positives but scenario is solid, acknowledge it
+  if (flags.length === 0 && cashFlow.monthsOfReserves >= 3 && cashFlow.paymentToIncomeRatio < 0.20) {
+    flags.push({ message: 'Solid financial foundation - reserves and income support this purchase comfortably.' })
+  }
+
   return flags
 }
 
@@ -260,6 +264,16 @@ function generateOpportunityFlags(price, totalCostOfOwnership, depreciation, bus
   if (financePortion > 0 && cashFlow.monthsOfReserves > 6 && totalInterest > 5000) {
     const savings = Math.round(totalInterest * 0.3)
     flags.push({ message: `With strong reserves, increasing cash deposit could save ~$${savings.toLocaleString()} in interest.` })
+  }
+
+  // FALLBACK: Always suggest considering tax optimization if business use isn't maxed
+  if (flags.length === 0 && businessUsePct < 100 && businessUsePct >= 50) {
+    flags.push({ message: `Consider if business use can be increased from ${businessUsePct}% - higher business use improves tax deductibility.` })
+  }
+
+  // FALLBACK: Suggest stress testing in any scenario
+  if (flags.length === 0) {
+    flags.push({ message: 'Review the scenario comparisons to see how changes in price or financing terms could optimize your position.' })
   }
 
   return flags

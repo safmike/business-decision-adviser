@@ -70,31 +70,13 @@ function withInterestRate(base, deltaPct) {
   return normalizeSplit({ ...base, interestRate: current + deltaPct });
 }
 
-function withLoanTerm(base, deltaYears) {
-  const current = toNumberOrNull(base.loanTerm) ?? 5;
-  return normalizeSplit({ ...base, loanTerm: Math.max(1, Math.round(current + deltaYears)) });
-}
-
 function withBusinessUse(base, pct) {
   return normalizeSplit({ ...base, businessUse: clamp(Math.round(pct), 0, 100) });
 }
 
-function withExtraDeposit(base, extraCash) {
-  const price = toNumberOrNull(base.vehiclePrice) ?? 0;
-  const currentCash = toNumberOrNull(base.cashAmount) ?? 0;
-
-  const nextCash = clamp(currentCash + extraCash, 0, price);
-
-  return normalizeSplit({
-    ...base,
-    paymentMethod: "split",
-    cashAmount: nextCash,
-    financeAmount: clamp(price - nextCash, 0, price),
-  });
-}
-
 /**
  * Output: [{ id, name, inputs, issues, results, ui }]
+ * NOW DYNAMIC: scenarios adjust based on actual inputs
  */
 export function generateVehicleScenarios(baseInputs) {
   const raw = clone(baseInputs);
@@ -120,17 +102,26 @@ export function generateVehicleScenarios(baseInputs) {
   const scenarioInputs = [
     { id: "current", name: "Current", inputs: base },
 
-    // Price sensitivity (NOW properly rebalances split amounts)
-    { id: "price_10k", name: "$10k Cheaper", inputs: withVehiclePrice(base, price - 10000) },
-    { id: "price_20k", name: "$20k Cheaper", inputs: withVehiclePrice(base, price - 20000) },
-
-    // Realistic stress tests
-    { id: "rate_stress", name: "Interest +2%", inputs: withInterestRate(base, 2) },
-    { id: "shorter_term", name: "Loan -2 Years", inputs: withLoanTerm(base, -2) },
-
-    // Tradeoffs
-    { id: "bigger_deposit", name: "Extra $10k Deposit", inputs: withExtraDeposit(base, 10000) },
-    { id: "business_80", name: "80% Business Use", inputs: withBusinessUse(base, 80) },
+    // DYNAMIC price scenarios (relative to current price)
+    { 
+      id: "price_20pct", 
+      name: "20% Cheaper", 
+      inputs: withVehiclePrice(base, price * 0.80) 
+    },
+    
+    // STRESS TEST: what if interest rates rise?
+    { 
+      id: "rate_stress", 
+      name: "Interest +2%", 
+      inputs: withInterestRate(base, 2) 
+    },
+    
+    // OPTIMIZATION: maximize tax benefits
+    { 
+      id: "business_max", 
+      name: "Max Business Use", 
+      inputs: withBusinessUse(base, 100) 
+    },
   ];
 
   return scenarioInputs.map((s) => {
