@@ -3,10 +3,21 @@ export const PRIMARY = "#4f46e5";
 export const PRIMARY_LIGHT = "#eef2ff";
 export const CARD_RADIUS = 20;
 
+// Helper to detect mobile
+const isMobile = () => {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth <= 768;
+};
+
+// Responsive font sizes
+const getFontSize = (desktop, mobile) => {
+  return isMobile() ? mobile : desktop;
+};
+
 export const outerShellStyle = {
   minHeight: "100vh",
   margin: 0,
-  padding: 16,
+  padding: isMobile() ? 12 : 16,
   display: "flex",
   justifyContent: "center",
   alignItems: "stretch",
@@ -34,16 +45,16 @@ export const cardStyle = {
   width: "100%",
   backgroundColor: "white",
   borderRadius: CARD_RADIUS,
-  padding: 22,
+  padding: isMobile() ? 16 : 22,
   boxShadow: "0 20px 50px rgba(15,23,42,0.16), 0 1px 3px rgba(15,23,42,0.12)",
 };
 
 export const primaryButtonStyle = {
-  padding: "10px 18px",
+  padding: isMobile() ? "12px 20px" : "10px 18px",
   borderRadius: 999,
   border: "none",
   fontWeight: 600,
-  fontSize: 14,
+  fontSize: getFontSize(14, 16),
   cursor: "pointer",
   background: PRIMARY,
   color: "white",
@@ -52,7 +63,7 @@ export const primaryButtonStyle = {
 
 export const sectionTitleStyle = {
   margin: "10px 0 6px",
-  fontSize: 14,
+  fontSize: getFontSize(14, 16),
   fontWeight: 600,
   color: "#111827",
 };
@@ -69,14 +80,14 @@ export const fieldBlockStyle = {
 };
 
 export const labelStyle = {
-  fontSize: 12,
+  fontSize: getFontSize(12, 14),
   color: "#4b5563",
   marginBottom: 4,
 };
 
 export const inputStyle = {
-  padding: "8px 10px",
-  fontSize: 13,
+  padding: isMobile() ? "10px 12px" : "8px 10px",
+  fontSize: getFontSize(13, 16),
   borderRadius: 10,
   border: "1px solid #d1d5db",
   outline: "none",
@@ -104,7 +115,7 @@ export const resultsCardStyle = {
   borderRadius: 14,
   backgroundColor: "#f9fafb",
   border: "1px solid #e5e7eb",
-  padding: 12,
+  padding: isMobile() ? 10 : 12,
 };
 
 // Add fadeIn animation to document
