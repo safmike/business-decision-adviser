@@ -5,7 +5,7 @@ import { resultsCardStyle, PRIMARY } from "../styles";
 import { generateVehicleScenarios } from "../logic/vehicle/scenarios.js";
 
 const ResultsPanel = ({ result, formData }) => {
-  const [showScenarios, setShowScenarios] = useState(false);
+   const [showScenarios, setShowScenarios] = useState(false);
   const [showYearByYear, setShowYearByYear] = useState(false);
 
   if (!result) {
@@ -297,6 +297,71 @@ const ResultsPanel = ({ result, formData }) => {
         ))}
       </div>
     )}
+    
+    {/* STRESS TESTING - New Section */}
+    <div style={{ 
+      ...resultsCardStyle, 
+      marginBottom: 12,
+      border: "2px solid #a78bfa",
+      backgroundColor: "#faf5ff",
+    }}>
+      <h4
+        style={{
+          margin: "0 0 10px",
+          fontSize: 13,
+          fontWeight: 600,
+          color: "#6b21a8",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        📊 Financial Stress Test
+      </h4>
+      <p style={{ 
+        margin: "0 0 12px", 
+        fontSize: 11, 
+        color: "#7c3aed",
+        lineHeight: 1.5 
+      }}>
+        How would this purchase hold up under challenging scenarios?
+      </p>
+      
+      {result.stressTests && result.stressTests.map((test, idx) => {
+        const severityColors = {
+          critical: { bg: "#fee2e2", border: "#fca5a5", text: "#991b1b" },
+          warning: { bg: "#fef3c7", border: "#fde047", text: "#92400e" },
+          positive: { bg: "#dcfce7", border: "#86efac", text: "#166534" },
+          info: { bg: "#e0e7ff", border: "#c7d2fe", text: "#3730a3" },
+        };
+        const style = severityColors[test.severity] || severityColors.info;
+
+        return (
+          <div
+            key={idx}
+            style={{
+              display: "flex",
+              gap: 10,
+              alignItems: "flex-start",
+              padding: "10px 12px",
+              borderRadius: 10,
+              backgroundColor: style.bg,
+              border: `1.5px solid ${style.border}`,
+              marginBottom: idx < result.stressTests.length - 1 ? 8 : 0,
+              fontSize: 12,
+              color: style.text,
+              fontWeight: 500,
+            }}
+          >
+            <span style={{ fontSize: 18, flexShrink: 0 }}>{test.icon}</span>
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: 3 }}>{test.name}</div>
+              <div style={{ lineHeight: 1.5, opacity: 0.95 }}>{test.message}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   </div>
 )}
 

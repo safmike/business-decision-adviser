@@ -384,6 +384,7 @@ function toLegacyUiShape(structured) {
     positiveFlags: structured.flags.positiveFlags,
     opportunityFlags: structured.flags.opportunityFlags,
     fbtWarnings: structured.flags.fbtWarnings,
+    stressTests: structured.flags.stressTests,
 
     summary: structured.summary
   }
@@ -492,6 +493,90 @@ export function runVehicleEngine(formData) {
   const summary = generateSummary(scores.overall, riskFlags)
 
   /** @type {VehicleResults} */
+
+ // ========== STRESS TESTING ==========
+  const stressTests = [];
+
+  // Test 1: Income drop 20%
+  const stressIncome = income * 0.80;
+  const stressTaxableIncome = Math.max(0, stressIncome - expenses);
+  const stressTaxRate = calculateTaxRate(stressTaxableIncome, entityType);
+  const stressDepreciation = calculateDepreciation(price, vehicleType, businessUse, ownershipYears, stressTaxRate);
+  const stressCashFlow1 = analyzeCashFlow(
+    stressIncome,
+    expenses,
+    reserves,
+    finance.monthlyPayment,
+    runningCosts.monthlyRunningCost,
+    finance.cashPortion
+  );
+  
+  stressTests.push({
+    id: 'income_drop',
+    name: 'Income Drop (-20%)',
+    icon: '⚠️',
+    severity: stressCashFlow1.monthsOfReserves < 3 ? 'warning' : 'info',
+    message: `If your income decreased by 20%, you'd have ${round1(stressCashFlow1.monthsOfReserves)} months of reserves (currently ${round1(cashFlow.monthsOfReserves)} months)`,
+    impact: stressCashFlow1.monthsOfReserves < cashFlow.monthsOfReserves * 0.5 ? 'high' : 'moderate'
+  });
+
+  // Test 2: Interest rate increase +2%
+  if (finance.financePortion > 0) {
+    const stressRate = (interestRate + 0.02);
+    const stressFinance = calculateFinanceDetails(price, paymentMethod, loanTerm, stressRate, cashAmount, financeAmount);
+    const increase = stressFinance.monthlyPayment - finance.monthlyPayment;
+    
+    stressTests.push({
+      id: 'rate_increase',
+      name: 'Interest Rate Rise (+2%)',
+      icon: '📈',
+      severity: increase > finance.monthlyPayment * 0.15 ? 'warning' : 'info',
+      message: `If rates increased to ${((interestRate + 0.02) * 100).toFixed(1)}%, your monthly payment would rise to $${round0(stressFinance.monthlyPayment)} (currently $${round0(finance.monthlyPayment)})`,
+      impact: increase > finance.monthlyPayment * 0.20 ? 'high' : 'moderate'
+    });
+  }
+
+  // Test 3: Expense increase 15%
+  const stressExpenses = expenses * 1.15;
+  const stressCashFlow3 = analyzeCashFlow(
+    income,
+    stressExpenses,
+    reserves,
+    finance.monthlyPayment,
+    runningCosts.monthlyRunningCost,
+    finance.cashPortion
+  );
+  
+  const expenseTestSeverity = stressCashFlow3.monthsOfReserves < 3 ? 'warning' : 'positive';
+  const expenseIcon = expenseTestSeverity === 'positive' ? '✓' : '⚠️';
+  
+  stressTests.push({
+    id: 'expense_increase',
+    name: 'Expense Increase (+15%)',
+    icon: expenseIcon,
+    severity: expenseTestSeverity,
+    message: expenseTestSeverity === 'positive' 
+      ? `Even with a 15% expense increase, you'd maintain ${round1(stressCashFlow3.monthsOfReserves)} months of reserves`
+      : `With a 15% expense increase, you'd only have ${round1(stressCashFlow3.monthsOfReserves)} months of reserves (currently ${round1(cashFlow.monthsOfReserves)} months)`,
+    impact: stressCashFlow3.monthsOfReserves < 3 ? 'high' : 'low'
+  });
+
+  // Test 4: Job loss scenario (3 months no income)
+  const cashAfter3Months = cashFlow.cashAfterPurchase - (cashFlow.monthlyExpenses * 3) - (finance.monthlyPayment * 3) - (runningCosts.monthlyRunningCost * 3);
+  const jobLossSeverity = cashAfter3Months < 0 ? 'critical' : cashAfter3Months < cashFlow.monthlyExpenses * 3 ? 'warning' : 'positive';
+  const jobLossIcon = jobLossSeverity === 'critical' ? '🚨' : jobLossSeverity === 'warning' ? '⚠️' : '✓';
+  
+  stressTests.push({
+    id: 'job_loss',
+    name: 'Job Loss (3 months)',
+    icon: jobLossIcon,
+    severity: jobLossSeverity,
+    message: cashAfter3Months > 0
+      ? `After 3 months without income, you'd still have $${round0(Math.max(0, cashAfter3Months))} remaining`
+      : `After 3 months without income, you'd face a shortfall of $${round0(Math.abs(cashAfter3Months))}`,
+    impact: jobLossSeverity === 'critical' ? 'high' : jobLossSeverity === 'warning' ? 'moderate' : 'low'
+  });
+
   const results = {
     scores,
     finance,
@@ -516,7 +601,8 @@ export function runVehicleEngine(formData) {
       riskFlags,
       positiveFlags,
       opportunityFlags,
-      fbtWarnings
+      fbtWarnings,
+      stressTests  
     },
     summary,
     calculatedAt: new Date(),
@@ -530,5 +616,5 @@ export function runVehicleEngine(formData) {
 
   results.ui = toLegacyUiShape(results)
 
-  return { issues, results }
+   return { issues, results }
 }
