@@ -195,37 +195,52 @@ html, body {
   width: 100%;
 }
 
-/* Mobile font size improvements */
+/* Mobile font size improvements - MORE AGGRESSIVE */
 @media (max-width: 768px) {
   body {
-    font-size: 15px;
+    font-size: 16px;
   }
   
   button {
-    font-size: 15px !important;
+    font-size: 16px !important;
+    padding: 12px 16px !important;
   }
   
   input, select {
     font-size: 16px !important;
+    padding: 12px !important;
   }
   
   p {
-    font-size: 14px !important;
+    font-size: 15px !important;
   }
   
   h1 {
-    font-size: 22px !important;
+    font-size: 24px !important;
   }
   
   h2 {
-    font-size: 18px !important;
+    font-size: 20px !important;
   }
   
   h3 {
-    font-size: 16px !important;
+    font-size: 18px !important;
   }
   
   h4 {
+    font-size: 16px !important;
+  }
+  
+  /* Specific increases for small text */
+  label {
+    font-size: 15px !important;
+  }
+  
+  span {
+    font-size: 15px !important;
+  }
+  
+  div {
     font-size: 15px !important;
   }
 }
