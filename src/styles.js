@@ -50,11 +50,11 @@ export const cardStyle = {
 };
 
 export const primaryButtonStyle = {
-  padding: isMobile() ? "12px 20px" : "10px 18px",
+  padding: isMobile() ? "14px 24px" : "10px 18px",
   borderRadius: 999,
   border: "none",
   fontWeight: 600,
-  fontSize: getFontSize(14, 16),
+  fontSize: getFontSize(14, 20),  // 20px on mobile!
   cursor: "pointer",
   background: PRIMARY,
   color: "white",
@@ -63,7 +63,7 @@ export const primaryButtonStyle = {
 
 export const sectionTitleStyle = {
   margin: "10px 0 6px",
-  fontSize: getFontSize(14, 16),
+  fontSize: getFontSize(14, 20),  // 20px on mobile!
   fontWeight: 600,
   color: "#111827",
 };
@@ -80,14 +80,14 @@ export const fieldBlockStyle = {
 };
 
 export const labelStyle = {
-  fontSize: getFontSize(12, 14),
+  fontSize: getFontSize(12, 16),  // 16px on mobile!
   color: "#4b5563",
   marginBottom: 4,
 };
 
 export const inputStyle = {
-  padding: isMobile() ? "10px 12px" : "8px 10px",
-  fontSize: getFontSize(13, 16),
+  padding: isMobile() ? "12px 14px" : "8px 10px",
+  fontSize: getFontSize(13, 18),  // 18px on mobile!
   borderRadius: 10,
   border: "1px solid #d1d5db",
   outline: "none",
@@ -134,4 +134,4 @@ if (typeof document !== 'undefined') {
     }
   `;
   document.head.appendChild(style);
-}
+} 

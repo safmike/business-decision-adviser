@@ -1,10 +1,9 @@
-import React, { useEffect, useRef } from "react";
-import { generateVehicleScenarios } from "../logic/vehicle/scenarios.js";
+import React, { useState, useEffect } from "react";
 import BackButton from "../components/BackButton.jsx";
 import LabeledInput from "../components/LabeledInput.jsx";
 import ResultsPanel from "../components/ResultsPanel.jsx";
-import { runVehicleEngine } from "../logic/vehicle/engine.js";
 import { useDecision } from "../contexts/DecisionContext.jsx";
+import { runVehicleEngine } from "../logic/vehicle/engine.js";
 import {
   outerShellStyle,
   scrollContainerStyle,
@@ -19,169 +18,86 @@ import {
   inputStyle,
 } from "../styles";
 
-const DEFAULT_INPUTS = {
-  vehiclePrice: "",
-  businessUse: 80,
-  paymentMethod: "finance",
-  cashAmount: "",
-  financeAmount: "",
-  loanTerm: 5,
-  interestRate: 7.5,
-  annualIncome: "",
-  annualExpenses: "",
-  cashReserves: "",
-  annualKm: 15000,
-  vehicleType: "sedan",
-  ownershipPeriod: 5,
-  entityType: "individual",
-};
-
-const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
-
 const VehicleAnalysis = ({ onBack }) => {
-  const { state, setInputs, setResults, setCalculating, setIssues } = useDecision();
+  const { state, setInputs, setResults, clearIssues, addIssue, setCalculating } =
+    useDecision();
 
-console.log("CTX functions:", {
-  setInputs,
-  setResults,
-  setCalculating,
-  setIssues,
-});
+  const [formData, setFormData] = useState({
+    vehiclePrice: "",
+    businessUse: 80,
+    paymentMethod: "finance",
+    cashAmount: "",
+    financeAmount: "",
+    loanTerm: 5,
+    interestRate: 7.5,
+    annualIncome: "",
+    annualExpenses: "",
+    cashReserves: "",
+    annualKm: 15000,
+    vehicleType: "sedan",
+    ownershipPeriod: 5,
+    entityType: "individual",
+  });
 
-// Tracks which split field user last edited ("cash" | "finance" | null)
-  const lastSplitEditedRef = useRef(null);
-
-  // Initialise global inputs once
+  const [showResults, setShowResults] = useState(false);
   useEffect(() => {
-    if (!state.inputs) setInputs(DEFAULT_INPUTS);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.inputs]);
-
-  const formData = state.inputs ?? DEFAULT_INPUTS;
-  const result = state.results;
-  const showResults = Boolean(state.results);
+    if (showResults) {
+      window.scrollTo(0, 0);
+    }
+  }, [showResults]);
 
   const handleChange = (field) => (e) => {
     const { type, value } = e.target;
     const numericTypes = ["number", "range"];
-    const parsed = numericTypes.includes(type) && value !== "" ? Number(value) : value;
+    const parsed =
+      numericTypes.includes(type) && value !== "" ? Number(value) : value;
 
-    let next = {
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [field]: parsed,
-    };
-
-    // Track which split side the user is controlling
-    if (field === "cashAmount") lastSplitEditedRef.current = "cash";
-    if (field === "financeAmount") lastSplitEditedRef.current = "finance";
-
-   // Auto-calc split amounts
-if (next.paymentMethod === "split") {
-  const price = Number(next.vehiclePrice) || 0;
-
-  if (field === "cashAmount") {
-    // allow empty while typing
-    if (next.cashAmount === "" || next.cashAmount === null || next.cashAmount === undefined) {
-      next.financeAmount = "";
-    } else {
-      const cash = clamp(Number(next.cashAmount), 0, price);
-      next.cashAmount = cash;
-      next.financeAmount = clamp(price - cash, 0, price);
-    }
-  } else if (field === "financeAmount") {
-    // allow empty while typing
-    if (
-      next.financeAmount === "" ||
-      next.financeAmount === null ||
-      next.financeAmount === undefined
-    ) {
-      next.cashAmount = "";
-    } else {
-      const fin = clamp(Number(next.financeAmount), 0, price);
-      next.financeAmount = fin;
-      next.cashAmount = clamp(price - fin, 0, price);
-    }
-  } else if (field === "vehiclePrice") {
-    // price changed — preserve last edited side
-    const last = lastSplitEditedRef.current;
-
-    if (last === "cash") {
-      const cash = clamp(Number(next.cashAmount) || 0, 0, price);
-      next.cashAmount = cash;
-      next.financeAmount = clamp(price - cash, 0, price);
-    } else if (last === "finance") {
-      const fin = clamp(Number(next.financeAmount) || 0, 0, price);
-      next.financeAmount = fin;
-      next.cashAmount = clamp(price - fin, 0, price);
-    }
-  }
-}
-    setInputs(next);
+    }));
   };
 
   const handlePaymentMethodClick = (method) => {
-    let next = { ...formData, paymentMethod: method };
-
-    // When switching to split, initialise amounts nicely
-    if (method === "split") {
-      const price = Number(next.vehiclePrice) || 0;
-
-      const hasCash = next.cashAmount !== "" && next.cashAmount !== null && next.cashAmount !== undefined;
-      const hasFin =
-        next.financeAmount !== "" && next.financeAmount !== null && next.financeAmount !== undefined;
-
-      if (!hasCash && !hasFin) {
-        const cash = clamp(Math.round(price * 0.2), 0, price);
-        next.cashAmount = cash;
-        next.financeAmount = clamp(price - cash, 0, price);
-        lastSplitEditedRef.current = "cash";
-      } else if (hasCash && !hasFin) {
-        const cash = clamp(Number(next.cashAmount) || 0, 0, price);
-        next.cashAmount = cash;
-        next.financeAmount = clamp(price - cash, 0, price);
-        lastSplitEditedRef.current = "cash";
-      } else if (!hasCash && hasFin) {
-        const fin = clamp(Number(next.financeAmount) || 0, 0, price);
-        next.financeAmount = fin;
-        next.cashAmount = clamp(price - fin, 0, price);
-        lastSplitEditedRef.current = "finance";
-      } else {
-        // Both exist - keep them as-is, but set a default controller
-        if (!lastSplitEditedRef.current) lastSplitEditedRef.current = "cash";
-      }
-    }
-
-    setInputs(next);
+    setFormData((prev) => ({ ...prev, paymentMethod: method }));
   };
 
-const handleCalculate = () => {
-  console.log("ANALYZE CLICKED", formData);
+  const handleCalculate = () => {
+    setInputs(formData);
+    clearIssues();
+    setCalculating(true);
 
-  setCalculating(true);
+    try {
+      const { issues, results } = runVehicleEngine(formData);
 
-  const computed = runVehicleEngine(formData);
-  console.log("ENGINE OUTPUT", computed);
+      if (issues?.length) {
+        for (const issue of issues) addIssue(issue);
+      }
 
-  setIssues(computed.issues || []);
+      setResults(results);
+      setShowResults(true);
 
-    const ui = computed?.results?.ui ?? null;
-  console.log("UI RESULTS", ui);
-
-  setResults(ui);
-};
+      } catch (e) {
+      addIssue({
+        field: "calculation",
+        severity: "error",
+        message: "Vehicle engine failed unexpectedly.",
+        suggestion: "Check inputs and try again.",
+      });
+    } finally {
+      setCalculating(false);
+    }
+  };
 
   const handleBackToForm = () => {
-    // Return to form view by clearing results (keep inputs intact)
-    setResults(null);
+    setShowResults(false);
   };
 
-  // Determine which payment fields to show
   const showFinanceFields =
     formData.paymentMethod === "finance" || formData.paymentMethod === "split";
   const showCashField = formData.paymentMethod === "split";
 
-  // If showing results, render results screen
-  if (showResults && result) {
+  if (showResults && state.results) {
     return (
       <div style={outerShellStyle}>
         <div style={scrollContainerStyle}>
@@ -209,17 +125,21 @@ const handleCalculate = () => {
                 <span style={{ fontSize: 28 }}>📊</span>
               </div>
               <h1 style={titleStyle}>Analysis Complete</h1>
-              <p style={subtitleStyle}>Here's your comprehensive financial analysis</p>
+              <p style={subtitleStyle}>
+                Here's your comprehensive financial analysis
+              </p>
             </div>
 
-            <ResultsPanel result={result} formData={formData} />
+            <ResultsPanel
+              result={state.results?.ui || null}
+              formData={formData}
+            />
           </div>
         </div>
       </div>
     );
   }
 
-  // Otherwise render the form
   return (
     <div style={outerShellStyle}>
       <div style={scrollContainerStyle}>
@@ -232,12 +152,11 @@ const handleCalculate = () => {
             </div>
             <h1 style={titleStyle}>Vehicle Purchase Analysis</h1>
             <p style={subtitleStyle}>
-              Complete the details below for a comprehensive financial analysis of your vehicle
-              purchase decision.
+              Complete the details below for a comprehensive financial analysis
+              of your vehicle purchase decision.
             </p>
           </div>
 
-          {/* VEHICLE DETAILS SECTION */}
           <Section icon="🚐" title="Vehicle Details">
             <div style={fieldGroupStyle}>
               <LabeledInput
@@ -288,7 +207,6 @@ const handleCalculate = () => {
             </div>
           </Section>
 
-          {/* PAYMENT METHOD SECTION */}
           <Section icon="💳" title="Payment Method">
             <div style={fieldGroupStyle}>
               <div style={fieldBlockStyle}>
@@ -310,15 +228,18 @@ const handleCalculate = () => {
                           ...(active ? activePaymentButtonStyle : {}),
                         }}
                       >
-                        <span style={{ fontSize: 20, marginBottom: 4 }}>{method.icon}</span>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>{method.label}</span>
+                        <span style={{ fontSize: 20, marginBottom: 4 }}>
+                          {method.icon}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>
+                          {method.label}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Conditional Fields Based on Payment Method */}
               {showCashField && (
                 <div style={fadeInStyle}>
                   <LabeledInput
@@ -336,7 +257,7 @@ const handleCalculate = () => {
                   {formData.paymentMethod === "split" && (
                     <LabeledInput
                       label="Finance Amount ($)"
-                      placeholder="Auto-calculates remaining balance"
+                      placeholder="e.g. 45,000"
                       type="number"
                       value={formData.financeAmount}
                       onChange={handleChange("financeAmount")}
@@ -363,7 +284,6 @@ const handleCalculate = () => {
             </div>
           </Section>
 
-          {/* BUSINESS DETAILS SECTION */}
           <Section icon="💼" title="Business Details">
             <div style={fieldGroupStyle}>
               <SelectField
@@ -402,7 +322,6 @@ const handleCalculate = () => {
             </div>
           </Section>
 
-          {/* ANALYZE BUTTON */}
           <div style={buttonContainerStyle}>
             <button onClick={handleCalculate} style={analyzeButtonStyle}>
               <span style={{ fontSize: 18, marginRight: 8 }}>🔍</span>
@@ -414,8 +333,6 @@ const handleCalculate = () => {
     </div>
   );
 };
-
-// ========== HELPER COMPONENTS ==========
 
 const Section = ({ icon, title, children }) => (
   <div style={sectionContainerStyle}>
@@ -442,7 +359,13 @@ const SelectField = ({ label, value, onChange, options }) => (
 
 const SliderField = ({ label, value, onChange, suffix }) => (
   <div style={fieldBlockStyle}>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
       <label style={labelStyle}>{label}</label>
       <span style={sliderValueStyle}>
         {value}
@@ -463,12 +386,11 @@ const SliderField = ({ label, value, onChange, suffix }) => (
   </div>
 );
 
-// ========== ENHANCED STYLES ==========
-
 const enhancedCardStyle = {
   ...cardStyle,
   background: "linear-gradient(to bottom, #ffffff, #fafafa)",
-  boxShadow: "0 25px 60px rgba(15,23,42,0.12), 0 5px 15px rgba(15,23,42,0.08)",
+  boxShadow:
+    "0 25px 60px rgba(15,23,42,0.12), 0 5px 15px rgba(15,23,42,0.08)",
 };
 
 const headerStyle = {
